@@ -1,5 +1,0 @@
-db instance: developer-01
-user: admin
-password: developer-admin-01
-db name: developer
-developer-01.czsx9d6iwajq.us-east-1.rds.amazonaws.com
