@@ -5,27 +5,49 @@ Author: Gabriel Garcia Da Silva
 Email: gsilva.gabriel@outlook.com
 Script para automação da tarefa de verificar preço de ações
 """
-import pymysql
-import pymysql.cursors
+import sqlite3
 import requests
 from datetime import datetime
 
-# informacoes mutaveis
-hostname = 'localhost'
-dbname = 'developer'
-username = 'root'
-key = 'password'
+# criacao do database e conexao
+try:
+    conn = sqlite3.connect('developer.db')
+    connection = conn.cursor()
+except Error as e:
+    print(e)
 
-# conexao com o banco de dados MySQL
-con = pymysql.connect(host=hostname, db=dbname, user=username, passwd=key,cursorclass=pymysql.cursors.DictCursor)
+# criacao de tabela para url de acoes
+connection.execute('''
+    CREATE TABLE IF NOT EXISTS ACTION_URL (
+	    ID_URL INTEGER PRIMARY KEY AUTOINCREMENT,
+        NAME_URL TEXT NOT NULL
+    )
+''')
 
-# abre um cursor para realizar a query
-cur = con.cursor()
-cur.execute("SELECT NAME_URL FROM developer.ACTION_URL;")
+# query para consultar dados
+connection.execute("SELECT NAME_URL FROM ACTION_URL;")
 
-for row in cur.fetchall():
+r = connection.fetchall()
+if len(r) == 0:
+    connection.execute("INSERT INTO ACTION_URL(NAME_URL) VALUES('https://www.infomoney.com.br/cotacoes/banco-inter-bidi4/')")
+    connection.execute("INSERT INTO ACTION_URL(NAME_URL) VALUES('https://www.infomoney.com.br/cotacoes/itau-unibanco-itub3f/')")
+
+connection.execute('''
+    CREATE TABLE IF NOT EXISTS ACTION_MONITORING(
+        ID_ACTION INTEGER PRIMARY KEY AUTOINCREMENT,
+        NAME_ACTION VARCHAR(30) NOT NULL,
+        CODE_ACTION VARCHAR(10) NOT NULL,
+        VALUE_ACTION NUMERIC(4,2) NOT NULL,
+        DATE_ACTION TIMESTAMP NOT NULL
+    )
+''')
+
+# consultando informacoes e 
+connection.execute("SELECT NAME_URL FROM ACTION_URL")
+
+for row in connection.fetchall():
     # lendo pagina html
-    url = row['NAME_URL']
+    url = row[0]
     html = requests.get(url)
 
     # tags html para consulta
@@ -54,12 +76,6 @@ for row in cur.fetchall():
     now = datetime.now()
     date_now = str(now.strftime("%Y/%m/%d %H:%M:%S")).replace('/', '-')
 
-    # abrindo conexao
-    conexao = pymysql.connect(db=dbname, user=username, passwd=key)
-
-    # cria cursor
-    cursor = conexao.cursor()
-
     # monta a variavel em string para posterior insert
     value = value[0]
     value = value.replace(',','.')
@@ -76,17 +92,11 @@ for row in cur.fetchall():
 
     text_insert = ("INSERT INTO ACTION_MONITORING(NAME_ACTION, CODE_ACTION, VALUE_ACTION, DATE_ACTION) VALUES ('%s', '%s', '%s', '%s')"%(title, code[0], value, date_now))
 
-    # executa comando no MySQL
-    cursor.execute(text_insert)
-
-    # commit no MySQL
-    conexao.commit()
-
-    # finaliza a conexao
-    conexao.close()
+    # executa comando
+    connection.execute(text_insert)
 
 # fecha a conexao aberta nas primeiras linhas
-con.close()
+connection.close()
 
 # finalizando script
 print('O script foi executado com sucesso !')
